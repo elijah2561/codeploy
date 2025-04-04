@@ -1,0 +1,35 @@
+name: Deploy to AWS Elastic Beanstalk via CodePipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # REQUIRED for OIDC authentication
+      contents: read
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::400358200633:role/GitHubActionsOIDC
+          aws-region: us-east-1
+
+      - name: Create Deployment Package
+        run: |
+          zip -r app.zip . -x "*.git*"
+
+      - name: Upload to S3
+        run: |
+          aws s3 cp app.zip s3://codepipeline-us-east-1-693530315034/app.zip --sse aws:kms
+
+      - name: Start CodePipeline
+        run: |
+          aws codepipeline start-pipeline-execution --name mypipeline
